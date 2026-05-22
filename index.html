@@ -63,6 +63,11 @@
         <h3 class="lightbox-title" id="lightbox-title"></h3>
         <div id="lightbox-details-rows"></div>
         <div class="lightbox-price" id="lightbox-price"></div>
+        <div class="lightbox-actions">
+          <button type="button" class="share-link-btn" id="share-link-btn" onclick="copyItemLink()">
+            <span id="share-link-label">העתקת קישור לפריט</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -258,11 +263,42 @@
       `;
     }
 
-    function openLightbox(item) {
+    function getItemShareUrl(item) {
+      const base = window.location.origin + window.location.pathname;
+      return base + '#item/' + encodeURIComponent(item.id);
+    }
+
+    function setItemHash(itemId) {
+      const url = window.location.pathname + window.location.search +
+        '#item/' + encodeURIComponent(itemId);
+      history.replaceState(null, '', url);
+    }
+
+    function clearItemHash() {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+
+    function parseItemIdFromHash() {
+      const match = window.location.hash.match(/^#item\/([^/?#]+)/);
+      return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    function findVisibleItemById(id) {
+      return visibleItems().find(i => i.id === id) || null;
+    }
+
+    function focusCatalogOnItem(item) {
+      showPage('catalog');
+      selectCategory(item.category);
+      selectSubsection(item.subsection || 'all');
+    }
+
+    function openLightbox(item, options = {}) {
       lightboxItem = item;
       lightboxImageIndex = 0;
       updateLightboxImage();
       document.getElementById('lightbox-title').textContent = item.title;
+      resetShareLinkButton();
 
       const rowsEl = document.getElementById('lightbox-details-rows');
       rowsEl.innerHTML = '';
@@ -291,6 +327,7 @@
 
       document.getElementById('lightbox').classList.add('active');
       document.body.style.overflow = 'hidden';
+      if (!options.skipHash) setItemHash(item.id);
     }
 
     function updateLightboxImage() {
@@ -325,6 +362,68 @@
       document.getElementById('lightbox').classList.remove('active');
       document.body.style.overflow = '';
       lightboxItem = null;
+      if (parseItemIdFromHash()) clearItemHash();
+    }
+
+    function resetShareLinkButton() {
+      const btn = document.getElementById('share-link-btn');
+      const label = document.getElementById('share-link-label');
+      btn.classList.remove('copied');
+      label.textContent = 'העתקת קישור לפריט';
+    }
+
+    async function copyItemLink() {
+      if (!lightboxItem) return;
+      const url = getItemShareUrl(lightboxItem);
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      const btn = document.getElementById('share-link-btn');
+      const label = document.getElementById('share-link-label');
+      btn.classList.add('copied');
+      label.textContent = 'הקישור הועתק!';
+      setTimeout(resetShareLinkButton, 2000);
+    }
+
+    function openItemFromHash() {
+      const id = parseItemIdFromHash();
+      if (!id || !data) return;
+      const item = findVisibleItemById(id);
+      if (!item) {
+        clearItemHash();
+        return;
+      }
+      focusCatalogOnItem(item);
+      openLightbox(item, { skipHash: true });
+    }
+
+    function onHashChange() {
+      const id = parseItemIdFromHash();
+      if (id) {
+        const item = findVisibleItemById(id);
+        if (item) {
+          focusCatalogOnItem(item);
+          if (!lightboxItem || lightboxItem.id !== item.id) {
+            openLightbox(item, { skipHash: true });
+          }
+        } else {
+          closeLightbox();
+          clearItemHash();
+        }
+      } else if (document.getElementById('lightbox').classList.contains('active')) {
+        document.getElementById('lightbox').classList.remove('active');
+        document.body.style.overflow = '';
+        lightboxItem = null;
+      }
     }
 
     function onLightboxOverlayClick(event) {
@@ -358,7 +457,10 @@
       renderHome();
       renderCatalog();
       renderContact();
+      openItemFromHash();
     }
+
+    window.addEventListener('hashchange', onHashChange);
 
     document.addEventListener('keydown', e => {
       if (!document.getElementById('lightbox').classList.contains('active')) return;

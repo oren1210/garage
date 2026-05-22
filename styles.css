@@ -447,6 +447,34 @@ main {
   margin-top: 0.75rem;
 }
 
+.lightbox-actions {
+  margin-top: 1.25rem;
+}
+
+.share-link-btn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--primary);
+  background: var(--white);
+  color: var(--primary);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.share-link-btn:hover {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.share-link-btn.copied {
+  background: var(--primary);
+  color: var(--white);
+  border-color: var(--primary);
+}
+
 footer {
   text-align: center;
   padding: 1.5rem;
