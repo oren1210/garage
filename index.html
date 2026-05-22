@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מכירת גראז'</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header>
+    <nav>
+      <div class="logo" id="site-logo" onclick="showPage('home')">מכירת גראז'</div>
+      <ul class="nav-links">
+        <li><a href="#" onclick="showPage('home'); return false;" class="active" data-page="home">בית</a></li>
+        <li><a href="#" onclick="showPage('catalog'); return false;" data-page="catalog">קטלוג</a></li>
+        <li><a href="#" onclick="showPage('contact'); return false;" data-page="contact">צור קשר</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1 id="hero-title">מכירת גראז'</h1>
+    <p class="subtitle" id="hero-subtitle">פריטים למכירה</p>
+  </section>
+
+  <main>
+    <div id="page-home" class="page active">
+      <h2 class="section-title">ברוכים הבאים</h2>
+      <p class="intro-text" id="home-intro"></p>
+      <h3 class="section-title">פריטים אחרונים</h3>
+      <div class="gallery-grid" id="recent-items"></div>
+    </div>
+
+    <div id="page-catalog" class="page">
+      <h2 class="section-title">קטלוג</h2>
+      <div class="tabs" id="category-tabs"></div>
+      <div class="subsection-chips" id="subsection-chips"></div>
+      <div id="catalog-panels"></div>
+    </div>
+
+    <div id="page-contact" class="page">
+      <h2 class="section-title">צור קשר</h2>
+      <p class="intro-text">מעוניינים בפריט? שלחו הודעה:</p>
+      <div class="contact-box" id="contact-box"></div>
+    </div>
+  </main>
+
+  <footer>
+    <p id="footer-text"></p>
+  </footer>
+
+  <div class="lightbox" id="lightbox" onclick="onLightboxOverlayClick(event)">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <button class="lightbox-close" onclick="closeLightbox()" aria-label="סגור">×</button>
+      <div class="lightbox-gallery">
+        <div id="lightbox-image-wrap"></div>
+        <button class="lightbox-nav prev" id="lightbox-prev" onclick="lightboxPrev()" aria-label="קודם">›</button>
+        <button class="lightbox-nav next" id="lightbox-next" onclick="lightboxNext()" aria-label="הבא">‹</button>
+        <span class="lightbox-counter" id="lightbox-counter"></span>
+      </div>
+      <div class="lightbox-details">
+        <h3 class="lightbox-title" id="lightbox-title"></h3>
+        <div id="lightbox-details-rows"></div>
+        <div class="lightbox-price" id="lightbox-price"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let data = null;
+    let activeCategory = null;
+    let activeSubsection = 'all';
+    let lightboxItem = null;
+    let lightboxImageIndex = 0;
+
+    const FIELD_LABELS = {
+      description: 'תיאור',
+      brand: 'מותג',
+      condition: 'מצב',
+      dimensions: 'מידות',
+      notes: 'הערות'
+    };
+
+    function visibleItems() {
+      if (!data || !data.items) return [];
+      return data.items.filter(i => !i.hidden);
+    }
+
+    function formatPrice(price) {
+      if (price === undefined || price === null || price === '') return '';
+      if (typeof price === 'number') return '₪' + price;
+      return String(price);
+    }
+
+    function getCategoryLabel(categoryId) {
+      const cat = data.categories.find(c => c.id === categoryId);
+      return cat ? cat.label : categoryId;
+    }
+
+    function getSubsectionLabel(categoryId, subsectionId) {
+      const cat = data.categories.find(c => c.id === categoryId);
+      if (!cat) return subsectionId;
+      const sub = cat.subsections.find(s => s.id === subsectionId);
+      return sub ? sub.label : subsectionId;
+    }
+
+    function itemMatchesFilter(item, categoryId, subsectionId) {
+      if (item.category !== categoryId) return false;
+      if (subsectionId === 'all') return true;
+      return item.subsection === subsectionId;
+    }
+
+    function renderImage(src, alt, className) {
+      if (src) {
+        return `<img src="${src}" alt="${alt || ''}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'placeholder-image\\'>📦</div>'">`;
+      }
+      return '<div class="placeholder-image">📦</div>';
+    }
+
+    function createItemCard(item) {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.onclick = () => openLightbox(item);
+      const thumb = item.images && item.images[0] ? item.images[0] : '';
+      const priceHtml = formatPrice(item.price)
+        ? `<div class="item-price">${formatPrice(item.price)}</div>`
+        : '';
+      let catLabel = getCategoryLabel(item.category);
+      if (item.subsection) {
+        catLabel += ' · ' + getSubsectionLabel(item.category, item.subsection);
+      }
+      card.innerHTML = `
+        <div class="item-image">${renderImage(thumb, item.title)}</div>
+        <div class="item-info">
+          <div class="item-title">${escapeHtml(item.title)}</div>
+          ${priceHtml}
+          <div class="item-category-label">${escapeHtml(catLabel)}</div>
+        </div>
+      `;
+      return card;
+    }
+
+    function escapeHtml(text) {
+      const d = document.createElement('div');
+      d.textContent = text;
+      return d.innerHTML;
+    }
+
+    function renderGrid(containerId, items) {
+      const el = document.getElementById(containerId);
+      el.innerHTML = '';
+      if (!items.length) {
+        el.innerHTML = '<p class="empty-state">אין פריטים להצגה</p>';
+        return;
+      }
+      items.forEach(item => el.appendChild(createItemCard(item)));
+    }
+
+    function renderHome() {
+      const items = visibleItems();
+      const recent = items.slice(-6).reverse();
+      renderGrid('recent-items', recent);
+    }
+
+    function renderCatalog() {
+      const tabsEl = document.getElementById('category-tabs');
+      const panelsEl = document.getElementById('catalog-panels');
+      tabsEl.innerHTML = '';
+      panelsEl.innerHTML = '';
+
+      data.categories.forEach((cat, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'tab-btn' + (idx === 0 ? ' active' : '');
+        btn.textContent = cat.label;
+        btn.dataset.category = cat.id;
+        btn.onclick = () => selectCategory(cat.id);
+        tabsEl.appendChild(btn);
+
+        const panel = document.createElement('div');
+        panel.className = 'tab-panel' + (idx === 0 ? ' active' : '');
+        panel.id = 'panel-' + cat.id;
+        panel.innerHTML = '<div class="gallery-grid" id="grid-' + cat.id + '"></div>';
+        panelsEl.appendChild(panel);
+      });
+
+      activeCategory = data.categories[0]?.id || null;
+      activeSubsection = 'all';
+      renderSubsectionChips();
+      updateCatalogGrid();
+    }
+
+    function selectCategory(categoryId) {
+      activeCategory = categoryId;
+      activeSubsection = 'all';
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.category === categoryId);
+      });
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'panel-' + categoryId);
+      });
+      renderSubsectionChips();
+      updateCatalogGrid();
+    }
+
+    function renderSubsectionChips() {
+      const chipsEl = document.getElementById('subsection-chips');
+      chipsEl.innerHTML = '';
+      const cat = data.categories.find(c => c.id === activeCategory);
+      if (!cat) return;
+
+      const allBtn = document.createElement('button');
+      allBtn.className = 'chip-btn active';
+      allBtn.textContent = 'הכל';
+      allBtn.dataset.subsection = 'all';
+      allBtn.onclick = () => selectSubsection('all');
+      chipsEl.appendChild(allBtn);
+
+      cat.subsections.forEach(sub => {
+        const btn = document.createElement('button');
+        btn.className = 'chip-btn';
+        btn.textContent = sub.label;
+        btn.dataset.subsection = sub.id;
+        btn.onclick = () => selectSubsection(sub.id);
+        chipsEl.appendChild(btn);
+      });
+    }
+
+    function selectSubsection(subsectionId) {
+      activeSubsection = subsectionId;
+      document.querySelectorAll('.chip-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.subsection === subsectionId);
+      });
+      updateCatalogGrid();
+    }
+
+    function updateCatalogGrid() {
+      if (!activeCategory) return;
+      const items = visibleItems().filter(i =>
+        itemMatchesFilter(i, activeCategory, activeSubsection)
+      );
+      renderGrid('grid-' + activeCategory, items);
+    }
+
+    function renderContact() {
+      const c = data.site.contact;
+      const waText = encodeURIComponent(c.whatsappMessage || '');
+      const waUrl = `https://wa.me/${c.whatsapp}?text=${waText}`;
+      document.getElementById('contact-box').innerHTML = `
+        <a href="mailto:${escapeHtml(c.email)}">
+          <span class="icon">✉️</span>
+          <span>${escapeHtml(c.email)}</span>
+        </a>
+        <a href="${waUrl}" target="_blank" rel="noopener" class="whatsapp-link">
+          <span class="icon">💬</span>
+          <span>שלחו הודעה בוואטסאפ</span>
+        </a>
+      `;
+    }
+
+    function openLightbox(item) {
+      lightboxItem = item;
+      lightboxImageIndex = 0;
+      updateLightboxImage();
+      document.getElementById('lightbox-title').textContent = item.title;
+
+      const rowsEl = document.getElementById('lightbox-details-rows');
+      rowsEl.innerHTML = '';
+      Object.keys(FIELD_LABELS).forEach(key => {
+        const val = item[key];
+        if (val !== undefined && val !== null && val !== '') {
+          const row = document.createElement('div');
+          row.className = 'detail-row';
+          row.innerHTML = `
+            <span class="detail-label">${FIELD_LABELS[key]}</span>
+            <span class="detail-value">${escapeHtml(String(val))}</span>
+          `;
+          rowsEl.appendChild(row);
+        }
+      });
+
+      const priceEl = document.getElementById('lightbox-price');
+      const priceStr = formatPrice(item.price);
+      priceEl.textContent = priceStr;
+      priceEl.style.display = priceStr ? 'block' : 'none';
+
+      const images = item.images || [];
+      document.getElementById('lightbox-prev').style.display = images.length > 1 ? 'block' : 'none';
+      document.getElementById('lightbox-next').style.display = images.length > 1 ? 'block' : 'none';
+      document.getElementById('lightbox-counter').style.display = images.length > 1 ? 'block' : 'none';
+
+      document.getElementById('lightbox').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function updateLightboxImage() {
+      const images = lightboxItem?.images || [];
+      const wrap = document.getElementById('lightbox-image-wrap');
+      if (!images.length) {
+        wrap.innerHTML = '<div class="placeholder-image">📦</div>';
+        document.getElementById('lightbox-counter').textContent = '';
+        return;
+      }
+      const src = images[lightboxImageIndex];
+      wrap.innerHTML = renderImage(src, lightboxItem.title);
+      document.getElementById('lightbox-counter').textContent =
+        `${lightboxImageIndex + 1} / ${images.length}`;
+    }
+
+    function lightboxPrev() {
+      const images = lightboxItem?.images || [];
+      if (images.length <= 1) return;
+      lightboxImageIndex = (lightboxImageIndex - 1 + images.length) % images.length;
+      updateLightboxImage();
+    }
+
+    function lightboxNext() {
+      const images = lightboxItem?.images || [];
+      if (images.length <= 1) return;
+      lightboxImageIndex = (lightboxImageIndex + 1) % images.length;
+      updateLightboxImage();
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('active');
+      document.body.style.overflow = '';
+      lightboxItem = null;
+    }
+
+    function onLightboxOverlayClick(event) {
+      if (event.target.id === 'lightbox') closeLightbox();
+    }
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + pageId).classList.add('active');
+      document.querySelectorAll('.nav-links a').forEach(a => {
+        a.classList.toggle('active', a.dataset.page === pageId);
+      });
+      if (pageId === 'catalog' && data) {
+        updateCatalogGrid();
+      }
+    }
+
+    function applySiteMeta() {
+      const s = data.site;
+      document.title = s.title;
+      document.getElementById('site-logo').textContent = s.title;
+      document.getElementById('hero-title').textContent = s.title;
+      document.getElementById('hero-subtitle').textContent = s.subtitle || '';
+      document.getElementById('home-intro').textContent = s.intro || '';
+      document.getElementById('footer-text').textContent =
+        '© ' + new Date().getFullYear() + ' ' + s.title;
+    }
+
+    function init() {
+      applySiteMeta();
+      renderHome();
+      renderCatalog();
+      renderContact();
+    }
+
+    document.addEventListener('keydown', e => {
+      if (!document.getElementById('lightbox').classList.contains('active')) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowRight') lightboxPrev();
+      if (e.key === 'ArrowLeft') lightboxNext();
+    });
+
+    fetch('items.json')
+      .then(r => {
+        if (!r.ok) throw new Error('Failed to load items.json');
+        return r.json();
+      })
+      .then(json => {
+        data = json;
+        init();
+      })
+      .catch(err => {
+        console.error(err);
+        document.querySelector('main').innerHTML =
+          '<p class="empty-state">שגיאה בטעינת הנתונים. הריצו שרת מקומי: python3 -m http.server 8000</p>';
+      });
+  </script>
+</body>
+</html>

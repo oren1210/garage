@@ -1,0 +1,95 @@
+{
+  "site": {
+    "title": "מכירת גראז'",
+    "subtitle": "פריטים למכירה",
+    "intro": "ברוכים הבאים! כאן תמצאו פריטים למכירה במחירים אטרקטיביים. עיינו בקטלוג וצרו קשר לגבי פריט שמעניין אתכם.",
+    "contact": {
+      "email": "example@example.com",
+      "whatsapp": "972501234567",
+      "whatsappMessage": "שלום, אשמח לשאול על פריט מהאתר"
+    }
+  },
+  "categories": [
+    {
+      "id": "clothes",
+      "label": "בגדים",
+      "subsections": [
+        { "id": "t-shirts", "label": "חולצות" },
+        { "id": "dresses", "label": "שמלות" },
+        { "id": "pants", "label": "מכנסיים" }
+      ]
+    },
+    {
+      "id": "furniture",
+      "label": "ריהוט",
+      "subsections": [
+        { "id": "tables", "label": "שולחנות" },
+        { "id": "chairs", "label": "כיסאות" }
+      ]
+    },
+    {
+      "id": "home-decor",
+      "label": "עיצוב הבית",
+      "subsections": [
+        { "id": "lamps", "label": "מנורות" },
+        { "id": "art", "label": "אמנות וקישוט" }
+      ]
+    },
+    {
+      "id": "kitchen",
+      "label": "מטבח וכלי בית",
+      "subsections": [
+        { "id": "utensils", "label": "כלי מטבח" },
+        { "id": "appliances", "label": "מכשירי חשמל" }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "shirt-01",
+      "category": "clothes",
+      "subsection": "t-shirts",
+      "title": "חולצת טי לבנה",
+      "images": ["photos/shirt-01-1.jpg", "photos/shirt-01-2.jpg"],
+      "hidden": false,
+      "description": "חולצת טי כותנה, נלבשה מעט",
+      "brand": "Zara",
+      "condition": "טוב מאוד",
+      "price": 30,
+      "dimensions": "מידה M"
+    },
+    {
+      "id": "dress-01",
+      "category": "clothes",
+      "subsection": "dresses",
+      "title": "שמלת קיץ פרחונית",
+      "images": ["photos/dress-01-1.jpg"],
+      "hidden": false,
+      "description": "שמלה קלילה, מתאימה לאירועים",
+      "condition": "כמו חדש",
+      "price": 80
+    },
+    {
+      "id": "table-01",
+      "category": "furniture",
+      "subsection": "tables",
+      "title": "שולחן אוכל עץ",
+      "images": ["photos/table-01-1.jpg", "photos/table-01-2.jpg", "photos/table-01-3.jpg"],
+      "hidden": false,
+      "description": "שולחן עץ מלא, 6 כיסאות (לא כלולים)",
+      "condition": "טוב",
+      "price": 400,
+      "dimensions": "160×90 ס״מ",
+      "notes": "איסוף עצמי בלבד"
+    },
+    {
+      "id": "lamp-hidden",
+      "category": "home-decor",
+      "subsection": "lamps",
+      "title": "מנורת רצפה (מוסתר)",
+      "images": ["photos/lamp-01-1.jpg"],
+      "hidden": true,
+      "price": 50
+    }
+  ]
+}
